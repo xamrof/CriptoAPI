@@ -26,5 +26,24 @@ try:
     data = response.json()
     print("Data received from the API")
     print(json.dumps(data, indent=4))
+
+    records = []
+    extraction_date = date.today().strftime("%Y-%m-%d")
+    
+    for crypto_id, values in data.items():
+        if vs_currency in values:
+            records.append({
+                'crypto_id': crypto_id,
+                'price_usd': values[vs_currency],
+                'extraction_date': extraction_date
+            })
+        else:
+            print(f"Missing {vs_currency} price for {crypto_id}")
+
+    # I NEED TO UPDATE WITH A DB LIKE SQLITE, THEN I NEED A UI TO DISPLAY THE DATA
+    df = pandas.DataFrame(records)
+    print("\nDataFrame:")
+    print(df)
+
 except requests.exceptions.RequestException as e:
     print(f"Error: {e}")
