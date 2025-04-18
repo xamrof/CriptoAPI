@@ -1,49 +1,42 @@
+from fastapi import FastAPI, Query
+import httpx
 import os
-import requests
-import json
-import pandas as pandas
+from typing import List
 from dotenv import load_dotenv
-from datetime import date
+import uvicorn
 
 load_dotenv()
 
-COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
+app = FastAPI(title="Cryptop API", description="API for fetching crypto prices from CoinGecko", version="0.1.0")
 
-crypto_id = ["bitcoin", "ethereum", "tether", "usdt", "binancecoin", "cardano"]
-vs_currency = "usd"
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
 
-ids = ",".join(crypto_id)
-url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies={vs_currency}"
+@app.get("/price/coingecko")
+async def get_price_from_coingecko(crypto_ids: str = Query(...), vs_currency: str = "usd"):
+    ids_list = crypto_ids.split(",")
+    ids = ",".join(ids_list)
 
-headers = {
-    "accept": "application/json",
-    "x-cg-demo-api-key": COINGECKO_API_KEY
-}
+    url = f"https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies={vs_currency}"    
+    final_data = {}
 
-try:
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-    data = response.json()
-    print("Data received from the API")
-    print(json.dumps(data, indent=4))
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(url)
+            response.raise_for_status()
+            data = response.json()
+            print(data)
+            for crypto_id, values in data.items():
+                if vs_currency in values:
+                    final_data[crypto_id] = {"source": "CoinGecko", "price": values[vs_currency]}
+                else:
+                    print(f"Missing {vs_currency} price for {crypto_id}")
 
-    records = []
-    extraction_date = date.today().strftime("%Y-%m-%d")
-    
-    for crypto_id, values in data.items():
-        if vs_currency in values:
-            records.append({
-                'crypto_id': crypto_id,
-                'price_usd': values[vs_currency],
-                'extraction_date': extraction_date
-            })
-        else:
-            print(f"Missing {vs_currency} price for {crypto_id}")
+            return final_data
 
-    # I NEED TO UPDATE WITH A DB LIKE SQLITE, THEN I NEED A UI TO DISPLAY THE DATA
-    df = pandas.DataFrame(records)
-    print("\nDataFrame:")
-    print(df)
+        except Exception as e:
+            return {"error": str(e)}
 
-except requests.exceptions.RequestException as e:
-    print(f"Error: {e}")
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
