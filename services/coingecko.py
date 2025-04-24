@@ -1,16 +1,12 @@
 from core.config import settings
 from typing import List
 import httpx
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 async def get_coingecko_prices(symbols: List[str], vs_currency: str = "usd") -> dict | None:
     api_key = settings.COINGECKO_API_KEY.get_secret_value() if settings.COINGECKO_API_KEY else None
     base_url = settings.COINGECKO_API_URL
     endpoint = "/simple/price"
-    final_data = {}
+    final_data = []
 
     if not api_key:
         print("Warning: COINGECKO API KEY NOT FOUND")
@@ -29,10 +25,10 @@ async def get_coingecko_prices(symbols: List[str], vs_currency: str = "usd") -> 
             logger.info(data)
             for crypto_id, values in data.items():
                 if vs_currency in values:
-                    final_data[crypto_id] = {"source": "CoinGecko", "price": values[vs_currency]}
+                    final_data.append({"source": "CoinGecko", "symbol": crypto_id, "currency": vs_currency, "price": values[vs_currency]})
                 else:
                     print(f"Missing {vs_currency} price for {crypto_id}")
-
+            logger.info(final_data)
             return final_data
 
         except Exception as e:
