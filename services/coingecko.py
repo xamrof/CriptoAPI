@@ -1,6 +1,9 @@
 from core.config import settings
 from typing import List
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def get_coingecko_prices(symbols: List[str], vs_currency: str = "usd") -> dict | None:
     api_key = settings.COINGECKO_API_KEY.get_secret_value() if settings.COINGECKO_API_KEY else None
@@ -17,9 +20,11 @@ async def get_coingecko_prices(symbols: List[str], vs_currency: str = "usd") -> 
         "x-cg-demo-api-key": api_key
     }
 
+    ids = ",".join(symbols)
+
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(f"{base_url}{endpoint}?ids={symbols}&vs_currencies={vs_currency}", headers=headers)
+            response = await client.get(f"{base_url}{endpoint}?ids={ids}&vs_currencies={vs_currency}", headers=headers)
             response.raise_for_status()
             data = response.json()
             logger.info(data)
